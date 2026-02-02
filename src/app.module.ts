@@ -6,6 +6,8 @@ import { PozziModule } from './pozzi/pozzi.module';
 import { ClientiModule } from './clienti/clienti.module';
 import { AppuntamentiModule } from './appuntamenti/appuntamenti.module';
 import { HealthController } from './health/health.controller';
+import { AuthModule } from './auth/schemas/auth.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { HealthController } from './health/health.controller';
     ClientiModule,
     BolleModule,
     AppuntamentiModule,
+    AuthModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })
