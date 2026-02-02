@@ -1,3 +1,5 @@
+// Backend: src/bolle/bolle.service.ts
+
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -5,7 +7,8 @@ import { Bolla, BollaDocument } from './schemas/bolla.schema';
 import { CreateBollaDto } from './dto/create-bolla.dto';
 import { UpdateBollaDto } from './dto/update-bolla.dto';
 import { ExportPdfDto } from './dto/export-pdf.dto';
-import PDFDocument from 'pdfkit';
+// ⚠️ CORRETTO: Import PDFKit in questo modo
+import * as PDFDocument from 'pdfkit';
 
 @Injectable()
 export class BolleService {
@@ -16,7 +19,6 @@ export class BolleService {
   async create(createBollaDto: CreateBollaDto): Promise<Bolla> {
     const pozzoId = new Types.ObjectId(createBollaDto.pozzoId);
     
-    // Verifica che il numero bolla non esista già per questo pozzo
     const existingBolla = await this.bollaModel.findOne({
       pozzoId,
       numeroBolla: createBollaDto.numeroBolla,
@@ -37,7 +39,6 @@ export class BolleService {
     return createdBolla.save();
   }
 
-  // NUOVO: Metodo per ottenere il prossimo numero bolla disponibile per un pozzo
   async getNextNumeroBolla(pozzoId: string): Promise<string> {
     const lastBolla = await this.bollaModel
       .findOne({ pozzoId: new Types.ObjectId(pozzoId) })
@@ -48,10 +49,8 @@ export class BolleService {
       return '1';
     }
 
-    // Prova a convertire il numero bolla in numero
     const lastNumber = parseInt(lastBolla.numeroBolla, 10);
     if (isNaN(lastNumber)) {
-      // Se non è un numero, suggerisci '1'
       return '1';
     }
 
@@ -106,7 +105,6 @@ export class BolleService {
   }
 
   async update(id: string, updateBollaDto: UpdateBollaDto): Promise<Bolla> {
-    // Se si sta modificando il numero bolla o il pozzo, verifica unicità
     if (updateBollaDto.numeroBolla || updateBollaDto.pozzoId) {
       const currentBolla = await this.bollaModel.findById(id);
       if (!currentBolla) {
@@ -118,7 +116,6 @@ export class BolleService {
         : currentBolla.pozzoId;
       const newNumeroBolla = updateBollaDto.numeroBolla || currentBolla.numeroBolla;
 
-      // Verifica se esiste già una bolla con questo numero per questo pozzo (escludendo quella corrente)
       const existingBolla = await this.bollaModel.findOne({
         _id: { $ne: id },
         pozzoId: newPozzoId,
@@ -160,11 +157,11 @@ export class BolleService {
     }
   }
 
-  // NUOVO: Metodo per esportare bolle in PDF usando PDFKit
   async exportPdf(exportPdfDto: ExportPdfDto): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({ 
+        // ⚠️ CORRETTO: Usa "new PDFDocument()" invece di "new PDFDocument.default()"
+        const doc = new (PDFDocument as any)({ 
           size: 'A4',
           margin: 50,
           bufferPages: true
@@ -172,12 +169,12 @@ export class BolleService {
 
         const chunks: Buffer[] = [];
         
-        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
         // Colori
-        const primaryColor = '#1e40af'; // Blu
+        const primaryColor = '#1e40af';
         const lightGray = '#f3f4f6';
         const darkGray = '#4b5563';
         const textColor = '#1f2937';
@@ -236,13 +233,11 @@ export class BolleService {
           statsData.forEach((row, i) => {
             const y = tableTop + (i * rowHeight);
             
-            // Background alternato
             if (i % 2 === 0) {
               doc.rect(tableLeft, y, colWidth * 2, rowHeight)
                  .fill(lightGray);
             }
 
-            // Testo
             doc.fontSize(10)
                .fillColor(textColor)
                .font('Helvetica-Bold')
@@ -261,9 +256,8 @@ export class BolleService {
              .text('Dettaglio Bolle:', 50, doc.y, { align: 'left' })
              .moveDown(0.5);
 
-          // Header tabella
           const headers = ['N. Bolla', 'Data', 'Cliente', 'Pozzo', 'm³', 'Ore', 'Totale', 'Acconto', 'Saldato'];
-          const colWidths = [45, 55, 120, 95, 35, 35, 55, 55, 45];  // Aumentato Cliente e Pozzo
+          const colWidths = [45, 55, 120, 95, 35, 35, 55, 55, 45];
           const tableLeft = 40;
           let tableTop = doc.y;
           const rowHeight = 20;
@@ -333,14 +327,16 @@ export class BolleService {
         }
 
         doc.end();
+        console.log('✅ PDF generato con successo');
       } catch (error) {
+        console.error('❌ Errore generazione PDF:', error);
         reject(new BadRequestException('Errore durante la generazione del PDF: ' + error.message));
       }
     });
   }
 
   async fixIndexes() {
-  await this.bollaModel.collection.dropIndex('numeroBolla_1');
-  console.log('Indice vecchio eliminato');
-}
+    await this.bollaModel.collection.dropIndex('numeroBolla_1');
+    console.log('Indice vecchio eliminato');
+  }
 }

@@ -1,3 +1,5 @@
+// Backend: src/bolle/bolle.controller.ts
+
 import {
   Controller,
   Get,
@@ -10,7 +12,7 @@ import {
   HttpStatus,
   Query,
   Res,
-  StreamableFile,
+  HttpException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { BolleService } from './bolle.service';
@@ -44,27 +46,44 @@ export class BolleController {
     return this.bolleService.findAll();
   }
 
-  // NUOVO: Endpoint per ottenere il prossimo numero bolla disponibile per un pozzo
   @Get('next-numero/:pozzoId')
   getNextNumeroBolla(@Param('pozzoId') pozzoId: string) {
     return this.bolleService.getNextNumeroBolla(pozzoId);
   }
 
-  // NUOVO: Endpoint per esportare bolle in PDF
   @Post('export-pdf')
   async exportPdf(
     @Body() exportPdfDto: ExportPdfDto, 
     @Res() res: Response,
   ): Promise<void> {
-    const pdfBuffer = await this.bolleService.exportPdf(exportPdfDto);
-    
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="bolle_${new Date().toISOString().split('T')[0]}.pdf"`,
-      'Content-Length': pdfBuffer.length,
-    });
-    
-    res.send(pdfBuffer);
+    try {
+      // Log temporaneo per debug
+      console.log('📥 Ricevuta richiesta export PDF');
+      console.log('📊 Numero bolle:', exportPdfDto.bolle?.length || 0);
+      console.log('🔍 Filtri:', exportPdfDto.filtri?.length || 0);
+      console.log('📈 Stats:', exportPdfDto.stats ? 'presenti' : 'assenti');
+
+      const pdfBuffer = await this.bolleService.exportPdf(exportPdfDto);
+      
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="bolle_${new Date().toISOString().split('T')[0]}.pdf"`,
+        'Content-Length': pdfBuffer.length,
+      });
+      
+      res.send(pdfBuffer);
+      console.log('✅ PDF inviato con successo');
+    } catch (error) {
+      console.error('❌ Errore export PDF:', error);
+      throw new HttpException(
+        {
+          statusCode: 400,
+          message: 'Errore durante la generazione del PDF',
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   @Get(':id')

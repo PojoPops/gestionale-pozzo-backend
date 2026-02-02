@@ -1,4 +1,13 @@
-import { IsArray, IsObject, ValidateNested, IsString, IsOptional } from 'class-validator';
+// Backend: src/bolle/dto/export-pdf.dto.ts
+
+import { 
+  IsArray, 
+  IsObject, 
+  ValidateNested, 
+  IsString, 
+  IsOptional,
+  IsNumber 
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class BollaExportDto {
@@ -35,10 +44,19 @@ class BollaExportDto {
 }
 
 class StatsDto {
+  @IsNumber()
   totaleBolle: number;
+
+  @IsString()
   totaleFatturato: string;
+
+  @IsString()
   totaleAcconti: string;
+
+  @IsString()
   totaleMetriCubi: string;
+
+  @IsString()
   totaleOre: string;
 }
 
